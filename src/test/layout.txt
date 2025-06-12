@@ -1,0 +1,14 @@
+Display Pin | Function      | ESP32 GPIO | Notes                                      |
+|-------------|---------------|------------|-------------------------------------------|
+| VCC         | 3.3V          | 3.3V       | NEVER connect to 5V on ESP32!             |
+| GND         | Ground        | GND        | Shared ground is essential                |
+| CS          | Chip Select   | 15         | Match TFT_CS in code                      |
+| DC          | Data/Command  | 2          | Match TFT_DC in code                      |
+| RESET       | Reset         | 4          | Match TFT_RST in code                     |
+| MOSI        | Data out (DIN)| 23         | Match TFT_MOSI                           |
+| SCK         | Clock         | 18         | Match TFT_CLK                            |
+| MISO        | Data in       | 19         | Not used unless reading from display      |
+| LED         | Backlight     | 3.3V       | Connect directly to 3.3V or use transistor + PWM |
+| T_CS, T_IRQ, etc. | Touch pins | ignore for now | Not needed unless using touch     |
+
+## Important Reminders:

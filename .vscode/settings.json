@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "*.ts": "typescript",
+        "system_error": "cpp"
+    }
+}

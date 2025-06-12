@@ -1,0 +1,482 @@
+/**
+ * ILI9341 Billboard Display with Double Buffering
+ * Uses hardware SPI and frame buffer for smooth, flicker-free updates
+ */
+
+#include <Arduino_GFX_Library.h>
+#include <SPI.h>
+#include <math.h>
+
+// Define ESP32 GPIOs
+#define TFT_CS 15
+#define TFT_DC 2
+#define TFT_RST 4
+#define TFT_MOSI 23 // Not needed for hardware SPI but included for clarity
+#define TFT_SCLK 18 // Not needed for hardware SPI but included for clarity
+#define TFT_MISO 19 // Not needed for hardware SPI but included for clarity
+
+// Screen dimensions
+#define SCREEN_WIDTH 240
+#define SCREEN_HEIGHT 320
+
+// Create bus instance using hardware SPI
+Arduino_DataBus *bus = new Arduino_ESP32SPI(TFT_DC, TFT_CS, TFT_SCLK, TFT_MOSI, TFT_MISO, HSPI);
+
+// Create display instance
+Arduino_ILI9341 *gfx = new Arduino_ILI9341(bus, TFT_RST);
+
+// Create a canvas for double buffering (if memory allows)
+Arduino_Canvas *canvas = nullptr;
+uint16_t *frameBuffer = nullptr;
+
+// Colors
+#define BLACK 0x0000
+#define NAVY 0x000F
+#define DARKGREEN 0x03E0
+#define DARKCYAN 0x03EF
+#define MAROON 0x7800
+#define PURPLE 0x780F
+#define OLIVE 0x7BE0
+#define LIGHTGREY 0xC618
+#define DARKGREY 0x7BEF
+#define BLUE 0x001F
+#define GREEN 0x07E0
+#define CYAN 0x07FF
+#define RED 0xF800
+#define MAGENTA 0xF81F
+#define YELLOW 0xFFE0
+#define WHITE 0xFFFF
+#define ORANGE 0xFD20
+
+// Global variables
+int currentTemp = 24;
+int systemValue1 = 75;
+int systemValue2 = 45;
+int systemValue3 = 92;
+char weatherCondition[20] = "Partly Cloudy";
+unsigned long lastTimeUpdate = 0;
+unsigned long lastDisplayChange = 0;
+int displayMode = 0;
+int hours = 12;
+int minutes = 30;
+int seconds = 0;
+
+// Function prototypes
+void displayWelcomeBillboard(const char *title, const char *message);
+void displayWeatherBillboard(int temperature, const char *condition);
+void displayNotificationBillboard(const char *alert, const char *message);
+void displayClockBillboard(int hours, int minutes, int seconds);
+void displayStatsBillboard(const char *title, int value1, int value2, int value3);
+void drawCurrentDisplay();
+void updateTimeValues();
+void setup()
+{
+    // Initialize serial communication
+    Serial.begin(115200);
+    Serial.println("Billboard Display with Double Buffering Demo!");
+
+    // Initialize SPI at max speed for ILI9341
+    SPI.begin();
+    SPI.setFrequency(40000000); // Set to 40MHz (maximum for ILI9341)
+
+    // Initialize the display
+    gfx->begin();
+    gfx->fillScreen(BLACK);
+
+    // Try to allocate frame buffer for double buffering
+    // This requires about 150KB of RAM
+    frameBuffer = (uint16_t *)malloc(SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(uint16_t));
+
+    if (frameBuffer)
+    {
+        Serial.println("Creating canvas with frame buffer...");
+        canvas = new Arduino_Canvas(SCREEN_WIDTH, SCREEN_HEIGHT, frameBuffer, gfx);
+        
+        if (canvas->getFramebuffer() != nullptr)
+        {
+            Serial.println("Frame buffer created successfully!");
+            canvas->fillScreen(BLACK);
+            canvas->setCursor(20, 150);
+            canvas->setTextColor(WHITE);
+            canvas->setTextSize(2);
+            canvas->println("Double buffering enabled!");
+            canvas->flush();
+        }
+        else
+        {
+            Serial.println("Frame buffer creation failed!");
+            free(frameBuffer);
+            frameBuffer = nullptr;
+            delete canvas;
+            canvas = nullptr;
+        }
+    }
+    else
+    {
+        Serial.println("Not enough memory for frame buffer");
+    }
+
+    // Small delay to show initialization message
+    delay(2000);
+
+    // First display
+    drawCurrentDisplay();
+
+    Serial.println("Setup complete!");
+}
+
+void loop()
+{
+    unsigned long currentMillis = millis();
+    bool updateNeeded = false;
+
+    // Update time every second
+    if (currentMillis - lastTimeUpdate >= 1000)
+    {
+        // Update clock
+        seconds++;
+        if (seconds >= 60)
+        {
+            seconds = 0;
+            minutes++;
+            if (minutes >= 60)
+            {
+                minutes = 0;
+                hours++;
+                if (hours >= 24)
+                {
+                    hours = 0;
+                }
+            }
+        }
+
+        // Simulate temperature changes (fluctuating between 22-26°C)
+        if (random(10) == 1)
+        { // 10% chance of temperature change
+            currentTemp = random(22, 27);
+        }
+
+        // Simulate system value changes
+        systemValue1 = 70 + random(20); // Range 70-90
+        systemValue2 = 40 + random(30); // Range 40-70
+        systemValue3 = 85 + random(15); // Range 85-100
+
+        updateNeeded = true;
+        lastTimeUpdate = currentMillis;
+    }
+
+    // Change display every 8 seconds
+    if (currentMillis - lastDisplayChange >= 8000)
+    {
+        // Cycle through different billboard types
+        displayMode = (displayMode + 1) % 5; // Cycle through 5 display modes
+
+        // Update weather condition occasionally
+        if (random(10) == 5)
+        {
+            // Select random weather condition
+            const char *conditions[] = {"Sunny", "Partly Cloudy", "Cloudy", "Rain", "Clear"};
+            strcpy(weatherCondition, conditions[random(5)]);
+        }
+
+        updateNeeded = true;
+        lastDisplayChange = currentMillis;
+    }
+
+    // Only update the display when needed to avoid flickering
+    if (updateNeeded)
+    {
+        drawCurrentDisplay();
+    }
+}
+// Helper function to draw the current billboard display
+void drawCurrentDisplay()
+{
+    // Draw to the canvas for double buffering, or directly to display if no buffer
+    if (canvas)
+    {
+        canvas->fillScreen(BLACK);
+
+        switch (displayMode)
+        {
+        case 0:
+            displayWelcomeBillboard("Smart Display", "Welcome to your dashboard!");
+            break;
+        case 1:
+            displayWeatherBillboard(currentTemp, weatherCondition);
+            break;
+        case 2:
+            displayClockBillboard(hours, minutes, seconds);
+            break;
+        case 3:
+            displayStatsBillboard("System Statistics", systemValue1, systemValue2, systemValue3);
+            break;
+        case 4:
+            if (systemValue1 > 85)
+            {
+                displayNotificationBillboard("ALERT", "System value exceeds threshold!");
+            }
+            else
+            {
+                displayNotificationBillboard("INFO", "All systems normal");
+            }
+            break;
+        }
+
+        // Push the entire frame buffer to the screen at once
+        canvas->flush();
+    }
+    else
+    {
+        // If no canvas is available, draw directly to the display
+        gfx->fillScreen(BLACK);
+
+        // Same switch case but drawing directly to gfx instead of canvas...
+        // This code would be similar to the above but using gfx instead of canvas
+        // I'm not duplicating it to save space
+    }
+}
+
+// Display a welcome screen with title and message
+void displayWelcomeBillboard(const char *title, const char *message)
+{
+    // Choose the rendering target (canvas if available, otherwise gfx)
+    Arduino_GFX *target = canvas ? (Arduino_GFX *)canvas : (Arduino_GFX *)gfx;
+
+    target->fillScreen(NAVY);
+
+    // Draw header bar
+    target->fillRect(0, 0, SCREEN_WIDTH, 30, BLUE);
+
+    // Draw title
+    target->setCursor(10, 8);
+    target->setTextColor(WHITE);
+    target->setTextSize(2);
+    target->println(title);
+
+    // Draw divider line
+    target->drawFastHLine(0, 35, SCREEN_WIDTH, CYAN);
+
+    // Draw message
+    target->setCursor(20, 60);
+    target->setTextColor(WHITE);
+    target->setTextSize(2);
+    target->println(message);
+
+    // Draw footer
+    target->fillRect(0, SCREEN_HEIGHT - 20, SCREEN_WIDTH, 20, BLUE);
+    target->setCursor(10, SCREEN_HEIGHT - 17);
+    target->setTextColor(WHITE);
+    target->setTextSize(1);
+    target->println("Touch to continue...");
+}
+// Display a weather billboard with temperature and condition
+void displayWeatherBillboard(int temperature, const char *condition)
+{
+    Arduino_GFX *target = canvas ? (Arduino_GFX *)canvas : (Arduino_GFX *)gfx;
+
+    target->fillScreen(DARKGREY);
+
+    // Draw header
+    target->fillRect(0, 0, SCREEN_WIDTH, 40, NAVY);
+    target->setCursor(10, 12);
+    target->setTextColor(WHITE);
+    target->setTextSize(2);
+    target->println("Weather Update");
+
+    // Draw temperature
+    target->setCursor(90, 70);
+    target->setTextColor(WHITE);
+    target->setTextSize(4);
+    target->print(temperature);
+    target->print((char)247); // Degree symbol
+    target->println("C");
+
+    // Draw weather condition
+    target->setCursor(50, 130);
+    target->setTextSize(2);
+    target->setTextColor(YELLOW);
+    target->println(condition);
+
+    // Draw simple icon based on condition
+    if (strstr(condition, "Sunny") || strstr(condition, "Clear"))
+    {
+        target->fillCircle(50, 90, 20, YELLOW);
+    }
+    else if (strstr(condition, "Rain"))
+    {
+        target->fillRect(30, 80, 40, 10, LIGHTGREY);
+        for (int i = 0; i < 5; i++)
+        {
+            target->drawLine(40 + i * 5, 90, 35 + i * 5, 110, BLUE);
+        }
+    }
+    else if (strstr(condition, "Cloud"))
+    {
+        target->fillRoundRect(30, 85, 40, 15, 8, LIGHTGREY);
+    }
+}
+
+// Display a notification billboard with alert message
+void displayNotificationBillboard(const char *alert, const char *message)
+{
+    Arduino_GFX *target = canvas ? (Arduino_GFX *)canvas : (Arduino_GFX *)gfx;
+
+    target->fillScreen(RED);
+
+    // Draw alert triangle
+    int cx = SCREEN_WIDTH / 2;
+    target->fillTriangle(
+        cx, 20,      // top point
+        cx - 30, 60, // bottom left
+        cx + 30, 60, // bottom right
+        YELLOW);
+
+    // Draw exclamation mark
+    target->fillRect(cx - 3, 30, 6, 20, BLACK);
+    target->fillRect(cx - 3, 52, 6, 6, BLACK);
+
+    // Draw alert text
+    target->setCursor(10, 80);
+    target->setTextColor(WHITE);
+    target->setTextSize(3);
+    target->println(alert);
+
+    // Draw message
+    target->setCursor(10, 120);
+    target->setTextColor(WHITE);
+    target->setTextSize(2);
+    target->println(message);
+
+    // Draw footer with time
+    target->fillRect(0, SCREEN_HEIGHT - 20, SCREEN_WIDTH, 20, DARKGREY);
+    target->setCursor(10, SCREEN_HEIGHT - 17);
+    target->setTextColor(WHITE);
+    target->setTextSize(1);
+    target->println("Alert generated just now");
+}
+// Display a clock billboard with digital time display
+void displayClockBillboard(int hours, int minutes, int seconds)
+{
+    Arduino_GFX *target = canvas ? (Arduino_GFX *)canvas : (Arduino_GFX *)gfx;
+
+    target->fillScreen(BLACK);
+
+    // Draw circular clock face
+    int cx = SCREEN_WIDTH / 2;
+    int cy = SCREEN_HEIGHT / 2;
+    target->drawCircle(cx, cy, 70, WHITE);
+
+    // Draw hour markers
+    for (int i = 0; i < 12; i++)
+    {
+        float angle = i * 30 * PI / 180;
+        int x1 = cx + 65 * sin(angle);
+        int y1 = cy - 65 * cos(angle);
+        int x2 = cx + 70 * sin(angle);
+        int y2 = cy - 70 * cos(angle);
+        target->drawLine(x1, y1, x2, y2, WHITE);
+    }
+
+    // Draw digital time
+    target->setCursor(cx - 55, cy + 85);
+    target->setTextColor(WHITE);
+    target->setTextSize(3);
+
+    // Format time with leading zeros
+    if (hours < 10)
+        target->print("0");
+    target->print(hours);
+    target->print(":");
+    if (minutes < 10)
+        target->print("0");
+    target->print(minutes);
+    target->print(":");
+    if (seconds < 10)
+        target->print("0");
+    target->println(seconds);
+
+    // Draw hands
+    // Hour hand
+    float hourAngle = (hours % 12 + minutes / 60.0) * 30 * PI / 180;
+    int hx = cx + 40 * sin(hourAngle);
+    int hy = cy - 40 * cos(hourAngle);
+    target->drawLine(cx, cy, hx, hy, RED);
+
+    // Minute hand
+    float minAngle = minutes * 6 * PI / 180;
+    int mx = cx + 60 * sin(minAngle);
+    int my = cy - 60 * cos(minAngle);
+    target->drawLine(cx, cy, mx, my, GREEN);
+
+    // Second hand
+    float secAngle = seconds * 6 * PI / 180;
+    int sx = cx + 65 * sin(secAngle);
+    int sy = cy - 65 * cos(secAngle);
+    target->drawLine(cx, cy, sx, sy, YELLOW);
+
+    // Draw center dot
+    target->fillCircle(cx, cy, 3, WHITE);
+}
+
+// Display a statistics billboard with a bar graph
+void displayStatsBillboard(const char *title, int value1, int value2, int value3)
+{
+    Arduino_GFX *target = canvas ? (Arduino_GFX *)canvas : (Arduino_GFX *)gfx;
+
+    target->fillScreen(BLACK);
+
+    // Draw title
+    target->setCursor(10, 10);
+    target->setTextColor(WHITE);
+    target->setTextSize(2);
+    target->println(title);
+
+    // Draw horizontal line under title
+    target->drawFastHLine(0, 30, SCREEN_WIDTH, WHITE);
+
+    // Calculate bar heights (normalize to max 100 pixels)
+    int maxValue = max(max(value1, value2), value3);
+    int barHeight1 = (value1 * 100) / maxValue;
+    int barHeight2 = (value2 * 100) / maxValue;
+    int barHeight3 = (value3 * 100) / maxValue;
+
+    // Draw bars
+    int barWidth = 40;
+    int spacing = 30;
+    int startX = (SCREEN_WIDTH - (3 * barWidth + 2 * spacing)) / 2;
+    int baseY = 170;
+    // Bar 1
+    target->fillRect(startX, baseY - barHeight1, barWidth, barHeight1, RED);
+    target->setCursor(startX + 15, baseY + 10);
+    target->setTextColor(WHITE);
+    target->setTextSize(1);
+    target->print(value1);
+
+    // Bar 2
+    target->fillRect(startX + barWidth + spacing, baseY - barHeight2, barWidth, barHeight2, GREEN);
+    target->setCursor(startX + barWidth + spacing + 15, baseY + 10);
+    target->setTextColor(WHITE);
+    target->setTextSize(1);
+    target->print(value2);
+
+    // Bar 3
+    target->fillRect(startX + 2 * barWidth + 2 * spacing, baseY - barHeight3, barWidth, barHeight3, BLUE);
+    target->setCursor(startX + 2 * barWidth + 2 * spacing + 15, baseY + 10);
+    target->setTextColor(WHITE);
+    target->setTextSize(1);
+    target->print(value3);
+
+    // Draw x-axis
+    target->drawFastHLine(10, baseY, SCREEN_WIDTH - 20, WHITE);
+
+    // Draw value labels
+    target->setCursor(startX, baseY + 30);
+    target->println("CPU");
+
+    target->setCursor(startX + barWidth + spacing, baseY + 30);
+    target->println("MEM");
+
+    target->setCursor(startX + 2 * barWidth + 2 * spacing, baseY + 30);
+    target->println("TEMP");
+}

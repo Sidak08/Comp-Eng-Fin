@@ -1,0 +1,393 @@
+#include <SPI.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_ILI9341.h>
+#include <time.h>
+
+// Define your ESP32 GPIOs
+#define TFT_CS 15
+#define TFT_DC 2
+#define TFT_RST 4
+
+#define TFT_MOSI 23
+#define TFT_CLK 18
+#define TFT_MISO 19 // Not required unless you're reading from the display
+
+// Use software-defined SPI
+// Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_MOSI, TFT_CLK, TFT_RST, TFT_MISO);
+
+// To this (hardware SPI):
+Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
+
+// Global variables for billboard content
+int currentTemp = 24;
+int systemValue1 = 75;
+int systemValue2 = 45;
+int systemValue3 = 92;
+char weatherCondition[20] = "Partly Cloudy";
+unsigned long lastTimeUpdate = 0;
+unsigned long lastDisplayChange = 0;
+int displayMode = 0; // Used to cycle through different billboards
+int hours = 12;
+int minutes = 30;
+int seconds = 0;
+
+void displayWelcomeBillboard(const char *title, const char *message);
+void displayWeatherBillboard(int temperature, const char *condition);
+void displayNotificationBillboard(const char *alert, const char *message);
+void displayClockBillboard(int hours, int minutes, int seconds);
+void displayStatsBillboard(const char *title, int value1, int value2, int value3);
+
+void setup()
+{
+    // Initialize serial communication
+    Serial.begin(9600);
+    Serial.println("Billboard Display Demo!");
+
+    // Initialize the display
+    SPI.begin();
+    SPI.setFrequency(40000000);
+    tft.begin();
+
+    // Set rotation for landscape mode (adjust as needed)
+    tft.setRotation(1);
+
+    // Run a simple display test
+    tft.fillScreen(ILI9341_BLACK);
+    tft.setCursor(50, 120);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.setTextSize(2);
+    tft.println("Initializing...");
+
+    // Read display diagnostics for debugging
+    uint8_t x = tft.readcommand8(ILI9341_RDMODE);
+    Serial.print("Display Power Mode: 0x");
+    Serial.println(x, HEX);
+    x = tft.readcommand8(ILI9341_RDMADCTL);
+    Serial.print("MADCTL Mode: 0x");
+    Serial.println(x, HEX);
+    x = tft.readcommand8(ILI9341_RDPIXFMT);
+    Serial.print("Pixel Format: 0x");
+    Serial.println(x, HEX);
+    x = tft.readcommand8(ILI9341_RDIMGFMT);
+    Serial.print("Image Format: 0x");
+    Serial.println(x, HEX);
+    x = tft.readcommand8(ILI9341_RDSELFDIAG);
+    Serial.print("Self Diagnostic: 0x");
+    Serial.println(x, HEX);
+
+    // Display welcome message
+    displayWelcomeBillboard("Smart Display", "Billboard Demo");
+
+    // Small delay before starting the main loop
+    delay(3000);
+
+    Serial.println("Setup complete!");
+}
+void loop()
+{
+    // Update time every second
+    if (millis() - lastTimeUpdate >= 1000)
+    {
+        // Update clock
+        seconds++;
+        if (seconds >= 60)
+        {
+            seconds = 0;
+            minutes++;
+            if (minutes >= 60)
+            {
+                minutes = 0;
+                hours++;
+                if (hours >= 24)
+                {
+                    hours = 0;
+                }
+            }
+        }
+
+        // Simulate temperature changes (fluctuating between 22-26°C)
+        if (random(10) == 1)
+        { // 10% chance of temperature change
+            currentTemp = random(22, 27);
+        }
+
+        // Simulate system value changes
+        systemValue1 = 70 + random(20); // Range 70-90
+        systemValue2 = 40 + random(30); // Range 40-70
+        systemValue3 = 85 + random(15); // Range 85-100
+
+        lastTimeUpdate = millis();
+    }
+
+    // Change display every 8 seconds
+    if (millis() - lastDisplayChange >= 8000)
+    {
+        // Cycle through different billboard types
+        displayMode = (displayMode + 1) % 5; // Cycle through 5 display modes
+
+        // Update weather condition occasionally
+        if (random(10) == 5)
+        {
+            // Select random weather condition
+            const char *conditions[] = {"Sunny", "Partly Cloudy", "Cloudy", "Rain", "Clear"};
+            strcpy(weatherCondition, conditions[random(5)]);
+        }
+
+        lastDisplayChange = millis();
+    }
+
+    // Display the current billboard based on displayMode
+    switch (displayMode)
+    {
+    case 0:
+        displayWelcomeBillboard("Smart Display", "Welcome to your dashboard!");
+        break;
+    case 1:
+        displayWeatherBillboard(currentTemp, weatherCondition);
+        break;
+    case 2:
+        displayClockBillboard(hours, minutes, seconds);
+        break;
+    case 3:
+        displayStatsBillboard("System Statistics", systemValue1, systemValue2, systemValue3);
+        break;
+    case 4:
+        // Show a notification every now and then
+        if (systemValue1 > 85)
+        {
+            displayNotificationBillboard("ALERT", "System value exceeds threshold!");
+        }
+        else
+        {
+            displayNotificationBillboard("INFO", "All systems normal");
+        }
+        break;
+    }
+
+    // Small delay to prevent display flicker
+    delay(50);
+}
+
+// Function declarations for billboards
+
+// Display a welcome screen with title and message
+void displayWelcomeBillboard(const char *title, const char *message)
+{
+    tft.fillScreen(ILI9341_NAVY);
+
+    // Draw header bar
+    tft.fillRect(0, 0, tft.width(), 30, ILI9341_BLUE);
+
+    // Draw title
+    tft.setCursor(10, 8);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.setTextSize(2);
+    tft.println(title);
+
+    // Draw divider line
+    tft.drawFastHLine(0, 35, tft.width(), ILI9341_CYAN);
+
+    // Draw message
+    tft.setCursor(20, 60);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.setTextSize(2);
+    tft.println(message);
+
+    // Draw footer
+    tft.fillRect(0, tft.height() - 20, tft.width(), 20, ILI9341_BLUE);
+    tft.setCursor(10, tft.height() - 17);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.setTextSize(1);
+    tft.println("Touch to continue...");
+}
+
+// Display a weather billboard with temperature and condition
+void displayWeatherBillboard(int temperature, const char *condition)
+{
+    tft.fillScreen(ILI9341_DARKGREY);
+
+    // Draw header
+    tft.fillRect(0, 0, tft.width(), 40, ILI9341_NAVY);
+    tft.setCursor(10, 12);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.setTextSize(2);
+    tft.println("Weather Update");
+
+    // Draw temperature
+    tft.setCursor(90, 70);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.setTextSize(4);
+    tft.print(temperature);
+    tft.print((char)247); // Degree symbol
+    tft.println("C");
+
+    // Draw weather condition
+    tft.setCursor(50, 130);
+    tft.setTextSize(2);
+    tft.setTextColor(ILI9341_YELLOW);
+    tft.println(condition);
+
+    // Draw simple icon based on condition
+    if (strstr(condition, "Sunny") || strstr(condition, "Clear"))
+    {
+        tft.fillCircle(50, 90, 20, ILI9341_YELLOW);
+    }
+    else if (strstr(condition, "Rain"))
+    {
+        tft.fillRect(30, 80, 40, 10, ILI9341_LIGHTGREY);
+        for (int i = 0; i < 5; i++)
+        {
+            tft.drawLine(40 + i * 5, 90, 35 + i * 5, 110, ILI9341_BLUE);
+        }
+    }
+    else if (strstr(condition, "Cloud"))
+    {
+        tft.fillRoundRect(30, 85, 40, 15, 8, ILI9341_LIGHTGREY);
+    }
+}
+// Display a notification billboard with alert message
+void displayNotificationBillboard(const char *alert, const char *message)
+{
+    tft.fillScreen(ILI9341_RED);
+
+    // Draw alert triangle
+    int cx = tft.width() / 2;
+    tft.fillTriangle(
+        cx, 20,      // top point
+        cx - 30, 60, // bottom left
+        cx + 30, 60, // bottom right
+        ILI9341_YELLOW);
+
+    // Draw exclamation mark
+    tft.fillRect(cx - 3, 30, 6, 20, ILI9341_BLACK);
+    tft.fillRect(cx - 3, 52, 6, 6, ILI9341_BLACK);
+
+    // Draw alert text
+    tft.setCursor(10, 80);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.setTextSize(3);
+    tft.println(alert);
+
+    // Draw message
+    tft.setCursor(10, 120);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.setTextSize(2);
+    tft.println(message);
+
+    // Draw footer with time
+    tft.fillRect(0, tft.height() - 20, tft.width(), 20, ILI9341_DARKGREY);
+    tft.setCursor(10, tft.height() - 17);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.setTextSize(1);
+    tft.println("Alert generated just now");
+}
+
+// Display a clock billboard with digital time display
+void displayClockBillboard(int hours, int minutes, int seconds)
+{
+    tft.fillScreen(ILI9341_BLACK);
+
+    // Draw circular clock face
+    int cx = tft.width() / 2;
+    int cy = tft.height() / 2;
+    tft.drawCircle(cx, cy, 70, ILI9341_WHITE);
+
+    // Draw hour markers
+    for (int i = 0; i < 12; i++)
+    {
+        float angle = i * 30 * PI / 180;
+        int x1 = cx + 65 * sin(angle);
+        int y1 = cy - 65 * cos(angle);
+        int x2 = cx + 70 * sin(angle);
+        int y2 = cy - 70 * cos(angle);
+        tft.drawLine(x1, y1, x2, y2, ILI9341_WHITE);
+    }
+
+    // Draw digital time
+    tft.setCursor(cx - 55, cy + 85);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.setTextSize(3);
+
+    // Format time with leading zeros
+    if (hours < 10)
+        tft.print("0");
+    tft.print(hours);
+    tft.print(":");
+    if (minutes < 10)
+        tft.print("0");
+    tft.print(minutes);
+    tft.print(":");
+    if (seconds < 10)
+        tft.print("0");
+    tft.println(seconds);
+
+    // Draw hands
+    // Hour hand
+    float hourAngle = (hours * 30 + minutes * 0.5) * PI / 180;
+    int hx = cx + 40 * sin(hourAngle);
+    int hy = cy - 40 * cos(hourAngle);
+    tft.drawLine(cx, cy, hx, hy, ILI9341_RED);
+
+    // Minute hand
+    float minAngle = minutes * 6 * PI / 180;
+    int mx = cx + 60 * sin(minAngle);
+    int my = cy - 60 * cos(minAngle);
+    tft.drawLine(cx, cy, mx, my, ILI9341_GREEN);
+
+    // Second hand
+    float secAngle = seconds * 6 * PI / 180;
+    int sx = cx + 65 * sin(secAngle);
+    int sy = cy - 65 * cos(secAngle);
+    tft.drawLine(cx, cy, sx, sy, ILI9341_YELLOW);
+}
+// Display a statistics billboard with a bar graph
+void displayStatsBillboard(const char *title, int value1, int value2, int value3)
+{
+    tft.fillScreen(ILI9341_BLACK);
+
+    // Draw title
+    tft.setCursor(10, 10);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.setTextSize(2);
+    tft.println(title);
+
+    // Draw horizontal line under title
+    tft.drawFastHLine(0, 30, tft.width(), ILI9341_WHITE);
+
+    // Calculate bar heights (normalize to max 100 pixels)
+    int maxValue = max(max(value1, value2), value3);
+    int barHeight1 = (value1 * 100) / maxValue;
+    int barHeight2 = (value2 * 100) / maxValue;
+    int barHeight3 = (value3 * 100) / maxValue;
+
+    // Draw bars
+    int barWidth = 40;
+    int spacing = 30;
+    int startX = (tft.width() - (3 * barWidth + 2 * spacing)) / 2;
+    int baseY = 170;
+
+    // Bar 1
+    tft.fillRect(startX, baseY - barHeight1, barWidth, barHeight1, ILI9341_RED);
+    tft.setCursor(startX + 15, baseY + 10);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.setTextSize(1);
+    tft.print(value1);
+
+    // Bar 2
+    tft.fillRect(startX + barWidth + spacing, baseY - barHeight2, barWidth, barHeight2, ILI9341_GREEN);
+    tft.setCursor(startX + barWidth + spacing + 15, baseY + 10);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.setTextSize(1);
+    tft.print(value2);
+
+    // Bar 3
+    tft.fillRect(startX + 2 * barWidth + 2 * spacing, baseY - barHeight3, barWidth, barHeight3, ILI9341_BLUE);
+    tft.setCursor(startX + 2 * barWidth + 2 * spacing + 15, baseY + 10);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.setTextSize(1);
+    tft.print(value3);
+
+    // Draw x-axis
+    tft.drawFastHLine(10, baseY, tft.width() - 20, ILI9341_WHITE);
+}
+// Modified loop function to cycle through billboards
