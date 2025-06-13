@@ -1,0 +1,64 @@
+────────────────────────────────────────────────────────
+► LEFT-SIDE SENSOR (input only)
+   • GPIO34                         — unchanged
+
+► PEDESTRIAN BUTTONS
+   • GPIO32                         — unchanged
+   • GPIO21                         — unchanged
+
+► “EMERGENCY-USE-ONLY” PINS
+   • TX  (GPIO1)                    — unchanged
+   • RX  (GPIO3)                    — unchanged
+   • GPIO0                          — unchanged  ⚠️  (boot-mode strap)
+
+► SPEED-CHECKER (inputs)
+   • GPIO22                         — keep
+   • (pick one spare pin)           — *GPIO23 is no longer free*  
+                                     Suggested: **GPIO27**
+
+► INPUT / TOUCH PADS
+   • VP  (GPIO36)                   — unchanged
+   • VN  (GPIO39)                   — unchanged
+
+► TFT SCREEN (SPI + control)  –– **UPDATED**
+   • GPIO2                          — new
+   • GPIO4                          — new
+   • GPIO23                         — new
+   • GPIO18                         — new
+   • GPIO19                         — new
+   (five pins total; if you need a 6th, choose a spare like GPIO13)
+
+► NIGHT-LIGHT SENSOR (input)
+   • GPIO33                         — unchanged
+
+► STATUS LEDs (outputs) –– **MUST BE MOVED**  
+   (all three original colour pairs now clash with the new screen pins)
+
+   Old mapping      →  Conflict reason        →  Suggested new pin
+   ──────────────────────────────────────────────────────────────────
+   red-1  GPIO19    →  now TFT-MOSI           →  **GPIO12** *
+   green  GPIO2     →  now TFT-CS             →  **GPIO13**
+   yellow GPIO4     →  now TFT-DC             →  **GPIO14**
+   red-2  GPIO5     →  ok (no conflict)       →  keep or use **GPIO25**
+   yellow GPIO15    →  ok (no conflict)       →  keep
+   green2 GPIO18    →  now TFT-SCK            →  **GPIO26** *
+
+   *GPIO12/15 have strapping behaviour; they work fine for LEDs provided they’re held LOW during boot (normal LED wiring already does this).
+
+────────────────────────────────────────────────────────
+Quick sanity-check on unused & safe GPIOs
+────────────────────────────────────────────────────────
+Good general-purpose pins still free after the refactor:
+   13, 14, 25, 26, 27
+
+Pins to avoid unless you know the caveats:
+   0 (boot-mode), 5 (boot-mode), 12 (strap), 15 (strap), 34-39 (input-only).
+
+────────────────────────────────────────────────────────
+Next steps
+────────────────────────────────────────────────────────
+1. Update your `pinConfig.h` (or equivalent) with the “Suggested new pin” column.  
+2. If you re-assign LEDs, remember to change `pinMode` and any `digitalWrite` calls.  
+3. Re-run a minimal “Blink” on each newly assigned LED pin before wiring the full circuit—this catches accidental short-cuts.
+
+That should keep your TFT happy **and** leave every other peripheral conflict-free. Let me know if you’d like a schematic or example code snippet with the new assignments!

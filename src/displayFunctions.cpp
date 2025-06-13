@@ -15,13 +15,10 @@ bool enableSmoothAnimations = true;
 
 // Setup and loop functions removed as they are in main.ino
 
-// Function to reset all the "first draw" flags when changing display modes
+// Function retained for compatibility but simplified since we always clear the screen
 void resetDrawFlags() {
-  // This will force a full redraw next time each display function is called
-  weatherFirstDraw = true;
-  timeFirstDraw = true;
-  populationFirstDraw = true;
-  speedFirstDraw = true;
+  // No longer needed as we do a full screen clear each time
+  // but kept for compatibility with main.cpp
 }
 
 /**
@@ -29,13 +26,8 @@ void resetDrawFlags() {
  * Shows temperature, humidity, and weather condition
  */
 void displayWeather(WeatherData weather) {
-  // Clear the screen once at the beginning of drawing
-  if (weatherFirstDraw) {
-    tft.fillScreen(BACKGROUND_COLOR);
-    weatherFirstDraw = false;
-  }
-  
-  // For billboard mode, only clear specific areas as needed
+  // Clear the entire screen
+  tft.fillScreen(BACKGROUND_COLOR);
   
   // Display title
   tft.setTextSize(3);
@@ -43,13 +35,12 @@ void displayWeather(WeatherData weather) {
   tft.setCursor(20, 10);
   tft.println("Weather Info");
   
-  // Display demo mode indicator if needed
+  // Display demo indicator if present
   if (weather.condition.indexOf("DEMO") >= 0) {
     tft.setTextSize(1);
     tft.setTextColor(ILI9341_YELLOW);
     tft.setCursor(tft.width() - 45, 15);
     tft.print("[DEMO]");
-    // Remove DEMO from condition string
     weather.condition.replace("DEMO ", "");
   }
   
@@ -62,25 +53,22 @@ void displayWeather(WeatherData weather) {
   tft.setCursor(30, 70);
   tft.print("Temperature: ");
   tft.print(weather.temperature, 1);
-  tft.print(" C");  // Changed from println to print to avoid extra newline
+  tft.print(" C");
   
   // Display humidity
   tft.setCursor(30, 100);
   tft.print("Humidity: ");
   tft.print(weather.humidity, 1);
-  tft.print(" %");  // Changed from println to print to avoid extra newline
+  tft.print(" %");
   
   // Display condition
   tft.setCursor(30, 130);
   tft.print("Condition: ");
-  tft.print(weather.condition);  // Changed from println to print to avoid extra newline
+  tft.print(weather.condition);
   
-  // Show weather icon/graphic at the bottom of the screen
+  // Show appropriate weather icon at the bottom
   int iconX = tft.width() / 2;
   int iconY = tft.height() - 50;
-  
-  // Clear the icon area first
-  tft.fillRect(iconX - 60, iconY - 60, 120, 120, BACKGROUND_COLOR);
   
   if (weather.condition.indexOf("Sunny") >= 0) {
     drawSunIcon(iconX, iconY);
@@ -96,17 +84,8 @@ void displayWeather(WeatherData weather) {
  * Shows current time in digital format and an analog clock
  */
 void displayTime(time_t t) {
-  // For Ontario time, we'll use the demo time set in main.cpp
-  // The main program now correctly sets the time to Ontario time
-  
-  // No time zone adjustment needed here since it's handled in main.cpp
-  // This allows for proper display of the time that's already set
-  
-  // Clear the screen only on first draw for billboard mode
-  if (timeFirstDraw) {
-    tft.fillScreen(BACKGROUND_COLOR);
-    timeFirstDraw = false;
-  }
+  // Clear the entire screen
+  tft.fillScreen(BACKGROUND_COLOR);
   
   // Display title
   tft.setTextSize(3);
@@ -114,7 +93,7 @@ void displayTime(time_t t) {
   tft.setCursor(65, 10);
   tft.println("Current Time");
   
-  // Check if we're in demo mode by looking at year (2023 is our demo year)
+  // Show demo indicator if year is 2023
   if (year(t) == 2023) {
     tft.setTextSize(1);
     tft.setTextColor(ILI9341_YELLOW);
@@ -125,78 +104,58 @@ void displayTime(time_t t) {
   // Draw line under title
   tft.drawLine(20, 50, tft.width() - 20, 50, TITLE_COLOR);
   
-  // Digital time display - move to top right with a more compact layout
-  tft.setTextSize(4); // Slightly smaller text size
-  tft.setTextColor(TEXT_COLOR);
-  tft.setCursor(tft.width() - 140, 70); // Adjusted position to handle wider PM times
+  // Clear the entire time display area first
+  tft.fillRect(tft.width() - 170, 60, 170, 140, BACKGROUND_COLOR);
   
-  // Format time with leading zeros (display only hours and minutes in billboard mode)
-  char timeString[12]; // HH:MM + null terminator + AM/PM
+  // Digital time display at top
+  tft.setTextSize(4);
+  tft.setTextColor(TEXT_COLOR);
+  tft.setCursor(tft.width() - 140, 70);
+  
+  // Format time in 12-hour format with leading zeros
   int hourValue = hourFormat12(t);
-  if (hourValue == 0) hourValue = 12; // 0 hour should display as 12 in 12-hour format
+  if (hourValue == 0) hourValue = 12;
+  char timeString[12];
   sprintf(timeString, "%2d:%02d", hourValue, minute(t));
   tft.print(timeString);
   
-  // Display AM/PM indicator directly below time
+  // Display AM/PM indicator on second line
   tft.setTextSize(2);
-  tft.setCursor(tft.width() - 90, 105); // Position AM/PM indicator below time
+  tft.setCursor(tft.width() - 140, 105);
   tft.print(isPM(t) ? "PM" : "AM");
   
-  // Display date directly underneath AM/PM
+  // Display date on third line
   tft.setTextSize(2);
-  tft.setCursor(tft.width() - 130, 130);
-  
-  char dateString[12]; // MM/DD/YYYY + null terminator
+  tft.setCursor(tft.width() - 140, 130);
+  char dateString[12];
   sprintf(dateString, "%02d/%02d/%04d", month(t), day(t), year(t));
   tft.print(dateString);
   
-  // Draw a moderately sized analog clock outline in bottom left
+  // Draw analog clock in bottom left
   int clockCenterX = 100;
   int clockCenterY = 160;
   int clockRadius = 55;
   
-  // Clear only the specific clock area to avoid flicker
-  tft.fillCircle(clockCenterX, clockCenterY, clockRadius + 10, BACKGROUND_COLOR);
-  
   tft.drawCircle(clockCenterX, clockCenterY, clockRadius, TITLE_COLOR);
   
-  // Calculate target angles in degrees
+  // Calculate hand angles
   float hourAngle = (hour(t) % 12) * 30 + minute(t) * 0.5;
   float minuteAngle = minute(t) * 6;
   float secondAngle = second(t) * 6;
   
-  // For billboard mode, no animation is needed as we want immediate positions
-  // when the display updates
-  float targetHourAngle = hourAngle * PI / 180.0;
-  float targetMinAngle = minuteAngle * PI / 180.0;
-  float targetSecAngle = secondAngle * PI / 180.0;
-  
-  // Store angles for next time
-  lastHourAngle = targetHourAngle;
-  lastMinuteAngle = targetMinAngle;
-  lastSecondAngle = targetSecAngle;
-  
-  // Direct angles with no animation for billboard mode
-  hourAngle = targetHourAngle * 180.0 / PI;
-  minuteAngle = targetMinAngle * 180.0 / PI;
-  secondAngle = targetSecAngle * 180.0 / PI;
-  
   // Draw clock hands
-  drawClockHand(clockCenterX, clockCenterY, clockRadius * 0.6, hourAngle, 3, ILI9341_WHITE); // Hour hand
-  drawClockHand(clockCenterX, clockCenterY, clockRadius * 0.8, minuteAngle, 2, ILI9341_WHITE); // Minute hand
-  drawClockHand(clockCenterX, clockCenterY, clockRadius * 0.9, secondAngle, 1, ILI9341_RED); // Second hand
+  drawClockHand(clockCenterX, clockCenterY, clockRadius * 0.6, hourAngle, 3, ILI9341_WHITE);
+  drawClockHand(clockCenterX, clockCenterY, clockRadius * 0.8, minuteAngle, 2, ILI9341_WHITE);
+  drawClockHand(clockCenterX, clockCenterY, clockRadius * 0.9, secondAngle, 1, ILI9341_RED);
 }
 
 /**
  * Display world or specified area population
  * Shows total population and growth indicators
  */
-void displayPopulation(long population) {
-  // Clear the screen only on first draw for billboard mode
-  if (populationFirstDraw) {
-    tft.fillScreen(BACKGROUND_COLOR);
-    populationFirstDraw = false;
-  }
+void displayPopulation(unsigned long population) {
+  // Clear the entire screen
+  tft.fillScreen(BACKGROUND_COLOR);
   
   // Display title
   tft.setTextSize(3);
@@ -204,7 +163,7 @@ void displayPopulation(long population) {
   tft.setCursor(40, 10);
   tft.println("Population");
   
-  // Show demo indicator since population is always demo data
+  // Show demo indicator
   tft.setTextSize(1);
   tft.setTextColor(ILI9341_YELLOW);
   tft.setCursor(tft.width() - 45, 15);
@@ -216,17 +175,13 @@ void displayPopulation(long population) {
   // Format population with commas
   String popStr = formatLargeNumber(population);
   
-  // Display total population
+  // Display total population label
   tft.setTextSize(2);
   tft.setTextColor(TEXT_COLOR);
   tft.setCursor(20, 70);
   tft.println("World Population:");
   
-  // Clear previous population text area
-  tft.fillRect(0, 100, tft.width(), 30, BACKGROUND_COLOR);
-  
-  // Clear previous population text area and display updated population
-  tft.fillRect(0, 100, tft.width(), 30, BACKGROUND_COLOR);
+  // Display the population number
   tft.setTextSize(3);
   tft.setCursor((tft.width() - popStr.length() * 18) / 2, 100);
   tft.print(popStr);
@@ -236,17 +191,14 @@ void displayPopulation(long population) {
   tft.setCursor(20, 150);
   tft.print("Growth Rate: +1.1% per year");
   
-  // Draw a simple graph showing population growth
+  // Draw a simple bar graph
   int graphX = 50;
   int graphY = 190;
   int graphWidth = tft.width() - 100;
   int graphHeight = 30;
   
-  // Clear the graph area first
-  tft.fillRect(graphX, graphY, graphWidth, graphHeight, BACKGROUND_COLOR);
-  
   tft.drawRect(graphX, graphY, graphWidth, graphHeight, TEXT_COLOR);
-  tft.fillRect(graphX, graphY, graphWidth * 0.8, graphHeight, ILI9341_BLUE); // 80% filled
+  tft.fillRect(graphX, graphY, graphWidth * 0.8, graphHeight, ILI9341_BLUE);
 }
 
 /**
@@ -254,27 +206,13 @@ void displayPopulation(long population) {
  * Shows different colors based on the speed threshold
  */
 void displaySpeed(float speed) {
-  // Clear the screen only on first draw for billboard mode
-  if (speedFirstDraw) {
-    tft.fillScreen(BACKGROUND_COLOR);
-    speedFirstDraw = false;
-  } else {
-    // Clear specific areas that will be updated with new content
-    tft.fillRect(0, 80, tft.width(), 50, BACKGROUND_COLOR);  // Speed value area
-    tft.fillRect(0, 130, tft.width(), 40, BACKGROUND_COLOR); // Warning text area
-    
-    // Also clear speedometer area to prevent ghosting
-      int centerX = tft.width() / 2;
-      int centerY = 210;  // Moved down to match drawing position
-      int radius = 45;  // Reduced radius for speedometer
-      tft.fillRect(centerX - radius - 20, centerY - radius - 20, 
-                 (radius + 20) * 2, (radius + 20) * 2, BACKGROUND_COLOR);
-  }
+  // Clear the entire screen
+  tft.fillScreen(BACKGROUND_COLOR);
   
+  // Determine color and warning based on speed
   uint16_t speedColor;
   String warningText;
   
-  // Determine color and warning based on speed
   if (speed > 100) {
     speedColor = WARNING_COLOR;
     warningText = "DANGER: EXCESSIVE SPEED";
@@ -292,7 +230,7 @@ void displaySpeed(float speed) {
   tft.setCursor(40, 10);
   tft.println("Speed Monitor");
   
-  // Always show demo indicator since speed is simulated
+  // Show demo indicator
   tft.setTextSize(1);
   tft.setTextColor(ILI9341_YELLOW);
   tft.setCursor(tft.width() - 45, 15);
@@ -300,8 +238,6 @@ void displaySpeed(float speed) {
   
   // Draw line under title
   tft.drawLine(20, 50, tft.width() - 20, 50, TITLE_COLOR);
-  
-  // Speed display area is already cleared above
   
   // Display the speed in large text with appropriate color
   tft.setTextSize(5);
@@ -314,7 +250,7 @@ void displaySpeed(float speed) {
   tft.setCursor(220, 95);
   tft.print("km/h");
   
-  // Display warning message (ensure area is cleared first)
+  // Display warning message
   tft.setTextSize(2);
   tft.setTextColor(speedColor);
   
@@ -325,7 +261,7 @@ void displaySpeed(float speed) {
   tft.setCursor((tft.width() - w) / 2, 140);
   tft.print(warningText);
   
-  // Draw a speedometer graphic (moved down)
+  // Draw a speedometer graphic
   drawSpeedometer(speed);
 }
 
@@ -400,7 +336,7 @@ void drawClockHand(int centerX, int centerY, float length, float angle, int widt
   tft.fillCircle(centerX, centerY, width + 1, color);
 }
 
-String formatLargeNumber(long number) {
+String formatLargeNumber(unsigned long number) {
   String result = "";
   String numStr = String(number);
   

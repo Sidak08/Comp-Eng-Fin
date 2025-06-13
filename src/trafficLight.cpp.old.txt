@@ -1,0 +1,52 @@
+#include <Arduino.h>
+#include "displayFunctions.h"
+
+// External reference to traffic light variables defined in main.cpp
+extern int ledPins[];
+extern const int numPins;
+extern unsigned long greenTime;
+extern unsigned long yellowTime;
+extern unsigned long allRedTime;
+extern unsigned long previousMillis;
+extern unsigned long currentInterval;
+extern int currentStep;
+extern bool lightIsOn;
+
+// Function to handle the traffic light sequence without blocking
+void updateTrafficLights() {
+    unsigned long currentMillis = millis();
+
+    // Check if it's time to change state
+    if (currentMillis - previousMillis >= currentInterval) {
+        previousMillis = currentMillis; // Save the time
+
+        int i = currentStep % numPins;
+
+        if (!lightIsOn) {
+            // Turn on current light
+            if (i >= 3) {
+                digitalWrite(ledPins[0], HIGH); // red1
+                digitalWrite(ledPins[3], LOW);  // red2
+            } else {
+                digitalWrite(ledPins[3], HIGH); // red2
+                digitalWrite(ledPins[0], LOW);  // red1
+            }
+
+            digitalWrite(ledPins[i], HIGH);
+            lightIsOn = true;
+            currentInterval = 2000; // Time to keep light on
+
+            Serial.print("Turning ON light at pin ");
+            Serial.println(ledPins[i]);
+        } else {
+            // Turn off current light and move to next step
+            digitalWrite(ledPins[i], LOW);
+            lightIsOn = false;
+            currentStep++;
+            currentInterval = 100; // Short delay before turning on next light
+
+            Serial.print("Turning OFF light at pin ");
+            Serial.println(ledPins[i]);
+        }
+    }
+}

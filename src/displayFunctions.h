@@ -8,37 +8,31 @@
 #include <math.h>
 
 // Weather data structure
-struct WeatherData {
-  float temperature;  // in Celsius
-  float humidity;     // in percentage
-  String condition;   // e.g., "Sunny", "Cloudy", "Rainy"
+struct WeatherData
+{
+  float temperature; // in Celsius
+  float humidity;    // in percentage
+  String condition;  // e.g., "Sunny", "Cloudy", "Rainy"
 };
 
 // Display function declarations
 // Main display functions
 void displayWeather(WeatherData weather);
 void displayTime(time_t t);
-void displayPopulation(long population);
+void displayPopulation(unsigned long population);
 void displaySpeed(float speed);
-void resetDrawFlags(); // Reset all first draw flags when changing display modes
-
-// Animation tracking variables
-extern float lastHourAngle;
-extern float lastMinuteAngle;
-extern float lastSecondAngle;
-extern float lastSpeedNeedleAngle;
-extern float lastSpeedValue;
-
-// Animation options
-extern bool enableSmoothAnimations;
+void resetDrawFlags(); // Kept for compatibility
 
 // Helper function declarations
 void drawSunIcon(int x, int y);
 void drawCloudIcon(int x, int y);
 void drawRainIcon(int x, int y);
 void drawClockHand(int centerX, int centerY, float length, float angle, int width, uint16_t color);
-String formatLargeNumber(long number);
+String formatLargeNumber(unsigned long number);
 void drawSpeedometer(float speed);
+
+// trafic lights
+//  void updateTrafficLights();
 
 // Define your ESP32 GPIOs - these should match what's in your .ino files
 #define TFT_CS 15
@@ -56,18 +50,7 @@ void drawSpeedometer(float speed);
 #define CAUTION_COLOR ILI9341_YELLOW
 #define SAFE_COLOR ILI9341_GREEN
 
-// Define animation constants
-#define ANIMATION_STEPS 10
-#define ANIMATION_DELAY 5
-#define NEEDLE_SMOOTH_FACTOR 0.2
-
 // External reference to the display object (defined in displayFunctions.cpp)
 extern Adafruit_ILI9341 tft;
-
-// External references to first draw flags
-extern bool weatherFirstDraw;
-extern bool timeFirstDraw;
-extern bool populationFirstDraw;
-extern bool speedFirstDraw;
 
 #endif // DISPLAY_FUNCTIONS_H

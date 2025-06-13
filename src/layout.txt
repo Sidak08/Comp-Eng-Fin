@@ -12,3 +12,5 @@ Display Pin | Function      | ESP32 GPIO | Notes                                
 | T_CS, T_IRQ, etc. | Touch pins | ignore for now | Not needed unless using touch     |
 
 ## Important Reminders:
+
+2, 4, 23, 18, 19
