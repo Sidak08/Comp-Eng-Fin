@@ -28,19 +28,58 @@ const unsigned long modeChangeInterval = 10000; // 10 seconds
 
 // Pin definitions for traffic lights
 int ledPins[] = {19, 13, 14, 5, 26, 25};
+int waitTime[] = {
+    2000,
+    5000,
+    500,
+    2000,
+    5000,
+    500,
+};
 // red yellow green red2 yellow2 green2
 const int numPins = sizeof(ledPins) / sizeof(ledPins[0]);
 
-// Timing parameters (in milliseconds)
-unsigned long greenTime = 5000;  // Green light duration
-unsigned long yellowTime = 2000; // Yellow light duration
-unsigned long allRedTime = 1000; // Time when all lights are red (safety interval)
 
 // Variables for non-blocking operation
 unsigned long previousMillis = 0;  // will store last time lights were updated
 unsigned long currentInterval = 0; // current interval to wait
 int currentStep = 0;               // current step in the traffic sequence
 bool lightIsOn = false;            // track if a light is currently on
+
+//photo resitors 
+
+// Pin configurations
+const int DARKNESS_SENSOR_PIN = 33;     // First photoresistor for darkness detection
+const int OUTPUT_PIN = 27;              // Output pin that sends a signal when dark
+const int SPEED_SENSOR_1_PIN = 22;      // First photoresistor for speed detection
+const int SPEED_SENSOR_2_PIN = 13;      // Second photoresistor for speed detection
+
+// Distance between speed sensors (in meters)
+const float DISTANCE = 0.5;  // Adjust this to the actual distance between your sensors
+
+// Thresholds - adjust based on your specific sensors and lighting conditions
+const int DARKNESS_THRESHOLD = 2000;    // ADC value threshold for "darkness"
+const int SPEED_SENSOR_THRESHOLD = 2000; // ADC value threshold for speed sensors
+
+// State variables for non-blocking operation
+enum SpeedDetectorState {
+  WAITING_FOR_FIRST_SENSOR,
+  WAITING_FOR_SECOND_SENSOR,
+  COOLDOWN
+};
+
+// Structure for speed detector state management
+struct SpeedDetector {
+  SpeedDetectorState state;
+  unsigned long startTime;
+  unsigned long cooldownEndTime;
+  unsigned long cooldownDuration;
+};
+
+SpeedDetector speedDetector;
+
+
+
 
 // Simple functions to update display values
 void setWeather(float temp, float humidity, String condition)
@@ -144,7 +183,7 @@ void updateTrafficLights()
 
       digitalWrite(ledPins[i], HIGH);
       lightIsOn = true;
-      currentInterval = 2000; // Time to keep light on
+      currentInterval = waitTime[i]; // Time to keep light on
 
       Serial.print("Turning ON light at pin ");
       Serial.println(ledPins[i]);
@@ -155,7 +194,7 @@ void updateTrafficLights()
       digitalWrite(ledPins[i], LOW);
       lightIsOn = false;
       currentStep++;
-      currentInterval = 100; // Short delay before turning on next light
+      currentInterval = 10; // Short delay before turning on next light
 
       Serial.print("Turning OFF light at pin ");
       Serial.println(ledPins[i]);
@@ -196,7 +235,7 @@ void setup()
   // Initialize timing variables
   previousMillis = millis();
 
-  delay(2000);
+  //delay(2000);
 }
 
 void loop()
@@ -249,7 +288,7 @@ void loop()
     Serial.println(currentMode);
   }
 
-  delay(100);
+  // delay(100);
 }
 
 // Additional helper functions can be added here
