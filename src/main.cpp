@@ -31,10 +31,10 @@ int ledPins[] = {19, 13, 14, 5, 26, 25};
 int waitTime[] = {
     2000,
     5000,
-    500,
+    1000,
     2000,
     5000,
-    500,
+    1000,
 };
 // red yellow green red2 yellow2 green2
 const int numPins = sizeof(ledPins) / sizeof(ledPins[0]);
@@ -57,7 +57,7 @@ const int SPEED_SENSOR_2_PIN = 35;  // Second photoresistor for speed detection
 const float DISTANCE = 0.5; // Adjust this to the actual distance between your sensors
 
 // Thresholds - adjust based on your specific sensors and lighting conditions
-const int DARKNESS_THRESHOLD = 1500;     // ADC value threshold for "darkness"
+const int DARKNESS_THRESHOLD = 4000;     // ADC value threshold for "darkness"
 const int SPEED_SENSOR_THRESHOLD = 2000; // ADC value threshold for speed sensors
 
 // State variables for non-blocking operation
@@ -211,13 +211,14 @@ void checkDarkness()
   {
     // Read darkness sensor
     int darknessValue = analogRead(DARKNESS_SENSOR_PIN);
-    Serial.print("Darkness: ");
-    Serial.println(darknessValue);
+    // Serial.print("Darkness: ");
+    // Serial.println(darknessValue);
 
     // Control output pin based on darkness value
     if (darknessValue < DARKNESS_THRESHOLD)
     {
       digitalWrite(OUTPUT_PIN, HIGH); // Turn on output when dark
+      Serial.print("Turning on the light on peak brightness");
     }
     else
     {
@@ -233,6 +234,11 @@ void updateSpeedDetection()
   // Read speed sensors
   int speedSensor1Value = analogRead(SPEED_SENSOR_1_PIN);
   int speedSensor2Value = analogRead(SPEED_SENSOR_2_PIN);
+
+  Serial.println("sensor 2 go brr");
+  Serial.println(speedSensor2Value);
+  Serial.println("sensor 1 go brr");
+  Serial.println(speedSensor1Value);
 
   // State machine for speed detection
   switch (speedDetector.state)
