@@ -1,6 +1,6 @@
 #include "TrafficLight.h"
 
-// Implementation of TrafficLight class methods
+// TrafficLight implementation
 
 TrafficLight::TrafficLight(int redPin, int yellowPin, int greenPin) {
   _pins[0] = redPin;
@@ -13,7 +13,7 @@ TrafficLight::TrafficLight(int redPin, int yellowPin, int greenPin) {
   }
   
   _currentState = RED;
-  digitalWrite(_pins[0], HIGH); // Start with red light on
+  digitalWrite(_pins[0], HIGH); // Start with red
   
   _lastChangeTime = millis();
   _redTime = 5000;
@@ -22,8 +22,8 @@ TrafficLight::TrafficLight(int redPin, int yellowPin, int greenPin) {
 }
 
 void TrafficLight::update() {
-  unsigned long currentTime = millis();
-  unsigned long elapsedTime = currentTime - _lastChangeTime;
+  unsigned long currTime = millis();
+  unsigned long elapsedTime = currTime - _lastChangeTime;
   
   switch (_currentState) {
     case RED:
@@ -47,12 +47,12 @@ void TrafficLight::update() {
 }
 
 void TrafficLight::setLight(LightState state) {
-  // Turn off all lights
+  // Reset lights
   for (int i = 0; i < 3; i++) {
     digitalWrite(_pins[i], LOW);
   }
   
-  // Turn on the requested light
+  // Activate selected light
   switch (state) {
     case RED:
       digitalWrite(_pins[0], HIGH);

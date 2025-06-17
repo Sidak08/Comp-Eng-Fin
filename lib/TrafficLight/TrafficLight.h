@@ -12,26 +12,26 @@ enum LightState {
 
 class TrafficLight {
 public:
-  // Constructor with pin assignments for red, yellow, green
+  // Setup with RGB pins
   TrafficLight(int redPin, int yellowPin, int greenPin);
   
-  // Update method to be called in the loop
+  // Call this in loop
   void update();
   
-  // Manually set a specific light
+  // Change light manually
   void setLight(LightState state);
   
-  // Set timing for each light state
+  // Set duration for each color
   void setTiming(unsigned long redTime, unsigned long yellowTime, unsigned long greenTime);
   
-  // Get current state
+  // Get active light
   LightState getCurrentState();
   
-  // Get how long the current state has been active
+  // Time in current state
   unsigned long getTimeInCurrentState();
   
 private:
-  int _pins[3]; // Array for the three pins (red, yellow, green)
+  int _pins[3]; // RGB pin array
   LightState _currentState;
   unsigned long _lastChangeTime;
   unsigned long _redTime;

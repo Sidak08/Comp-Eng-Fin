@@ -7,23 +7,22 @@
 #include <TimeLib.h>
 #include <math.h>
 
-// Weather data structure
+// Weather info container
 struct WeatherData
 {
-  float temperature; // in Celsius
-  float humidity;    // in percentage
-  String condition;  // e.g., "Sunny", "Cloudy", "Rainy"
+  float temperature; // celsius
+  float humidity;    // percent
+  String condition;  // weather state
 };
 
-// Display function declarations
 // Main display functions
 void displayWeather(WeatherData weather);
 void displayTime(time_t t);
 void displayPopulation(unsigned long population);
 void displaySpeed(float speed);
-void resetDrawFlags(); // Kept for compatibility
+void resetDrawFlags(); // Legacy function
 
-// Helper function declarations
+// Drawing helpers
 void drawSunIcon(int x, int y);
 void drawCloudIcon(int x, int y);
 void drawRainIcon(int x, int y);
@@ -31,10 +30,7 @@ void drawClockHand(int centerX, int centerY, float length, float angle, int widt
 String formatLargeNumber(unsigned long number);
 void drawSpeedometer(float speed);
 
-// trafic lights
-//  void updateTrafficLights();
-
-// Define your ESP32 GPIOs - these should match what's in your .ino files
+// Display pin config
 #define TFT_CS 15
 #define TFT_DC 2
 #define TFT_RST 4
@@ -42,7 +38,7 @@ void drawSpeedometer(float speed);
 #define TFT_CLK 18
 #define TFT_MISO 19
 
-// Define colors
+// Display colors
 #define BACKGROUND_COLOR ILI9341_BLACK
 #define TITLE_COLOR ILI9341_WHITE
 #define TEXT_COLOR ILI9341_CYAN

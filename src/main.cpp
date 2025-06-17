@@ -3,15 +3,15 @@
 #include <Adafruit_ILI9341.h>
 #include <TimeLib.h>
 
-// Include the display functions header
+// Display functions
 #include "displayFunctions.h"
 
-// Global variables for storing data
+// Global data
 WeatherData currentWeather = {19.5, 35.0, "Sunny"};
-long long currentPopulation = 10000; // World population display value (reduced to fit in 32-bit unsigned long)
-float currentSpeed = 75.0;           // Default speed value
+long long currentPopulation = 10000; // Population count
+float currentSpeed = 75.0;           // Speed in km/h
 
-// Display mode enumeration
+// Display modes
 enum DisplayMode
 {
   WEATHER_DISPLAY,
@@ -22,12 +22,10 @@ enum DisplayMode
 
 DisplayMode currentMode = WEATHER_DISPLAY;
 unsigned long lastModeChange = 0;
-const unsigned long modeChangeInterval = 10000; // 10 seconds
+const unsigned long modeChangeInterval = 10000; // 10s rotation
 
-// trafic light
-
-// Pin definitions for traffic lights
-int ledPins[] = {19, 14, 13, 5, 26, 12};
+// Traffic light setup
+int ledPins[] = {19, 14, 13, 5, 26, 12}; // R Y G R2 Y2 G2
 int waitTime[] = {
     2000,
     5000,
@@ -36,31 +34,31 @@ int waitTime[] = {
     5000,
     1000,
 };
-// red yellow green red2 yellow2 green2
+
 const int numPins = sizeof(ledPins) / sizeof(ledPins[0]);
 
-// Variables for non-blocking operation
-unsigned long previousMillis = 0;  // will store last time lights were updated
-unsigned long currentInterval = 0; // current interval to wait
-int currentStep = 0;               // current step in the traffic sequence
-bool lightIsOn = false;            // track if a light is currently on
+// Non-blocking variables
+unsigned long prevMillis = 0;    // Last light update time
+unsigned long currInterval = 0;  // Current wait interval
+int currStep = 0;                // Current traffic sequence
+bool lightIsOn = false;          // Light status
 
-// photo resitors
+// Light sensors
 
-// Pin configurations
-const int DARKNESS_SENSOR_PIN = 33; // First photoresistor for darkness detection
-const int OUTPUT_PIN = 27;          // Output pin that sends a signal when dark
-const int SPEED_SENSOR_1_PIN = 34;  // First photoresistor for speed detection
-const int SPEED_SENSOR_2_PIN = 35;  // Second photoresistor for speed detection
+// Pin setup
+const int darknessSensorPin = 33; // Darkness detection
+const int outputPin = 27;         // Dark signal output
+const int speedSensor1Pin = 34;   // Speed detection 1
+const int speedSensor2Pin = 35;   // Speed detection 2
 
-// Distance between speed sensors (in meters)
-const float DISTANCE = 0.5; // Adjust this to the actual distance between your sensors
+// Sensor config
+const float distance = 0.5;       // Meters between sensors
 
-// Thresholds - adjust based on your specific sensors and lighting conditions
-const int DARKNESS_THRESHOLD = 4050;     // ADC value threshold for "darkness"
-const int SPEED_SENSOR_THRESHOLD = 2000; // ADC value threshold for speed sensors
+// Thresholds
+const int darknessThreshold = 4050;    // Darkness trigger level
+const int speedSensorThreshold = 2000; // Speed trigger level
 
-// State variables for non-blocking operation
+// Speed detection states
 enum SpeedDetectorState
 {
   WAITING_FOR_FIRST_SENSOR,
@@ -68,7 +66,7 @@ enum SpeedDetectorState
   COOLDOWN
 };
 
-// Structure for speed detector state management
+// Speed detector config
 struct SpeedDetector
 {
   SpeedDetectorState state;
@@ -79,7 +77,7 @@ struct SpeedDetector
 
 SpeedDetector speedDetector;
 
-// Simple functions to update display values
+// Display value setters
 void setWeather(float temp, float humidity, String condition)
 {
   currentWeather.temperature = temp;
@@ -99,11 +97,11 @@ void setSpeed(float speed)
 
 void updateDisplayValues()
 {
-  // Change values based on which screen is shown
+  // Update based on current screen
   switch (currentMode)
   {
   case WEATHER_DISPLAY:
-    // Cycle through different weather conditions
+    // Rotate weather conditions
     static int weatherState = 0;
     weatherState = (weatherState + 1) % 3;
 
@@ -122,7 +120,7 @@ void updateDisplayValues()
     break;
 
   case SPEED_DISPLAY:
-    // Cycle through different speed values
+    // Rotate speed values
     static int speedState = 0;
     speedState = (speedState + 1) % 3;
 
@@ -130,18 +128,18 @@ void updateDisplayValues()
     {
     case 0:
       setSpeed(60.0);
-      break; // Safe speed
+      break; // Safe
     case 1:
       setSpeed(85.0);
-      break; // Caution speed
+      break; // Caution
     case 2:
       setSpeed(120.0);
-      break; // Danger speed
+      break; // Danger
     }
     break;
 
   case POPULATION_DISPLAY:
-    // Increase population slightly
+    // Increment population
     if (currentPopulation < 3900000000UL)
     {
       currentPopulation += 10000000;
@@ -158,16 +156,16 @@ void updateTrafficLights()
 {
   unsigned long currentMillis = millis();
 
-  // Check if it's time to change state
-  if (currentMillis - previousMillis >= currentInterval)
+  // Time to change state?
+  if (currentMillis - prevMillis >= currInterval)
   {
-    previousMillis = currentMillis; // Save the time
+    prevMillis = currentMillis;
 
-    int i = currentStep % numPins;
+    int i = currStep % numPins;
 
     if (!lightIsOn)
     {
-      // Turn on current light
+      // Activate light
       if (i >= 3)
       {
         digitalWrite(ledPins[0], HIGH); // red1
@@ -181,18 +179,18 @@ void updateTrafficLights()
 
       digitalWrite(ledPins[i], HIGH);
       lightIsOn = true;
-      currentInterval = waitTime[i]; // Time to keep light on
+      currInterval = waitTime[i];
 
       Serial.print("Turning ON light at pin ");
       Serial.println(ledPins[i]);
     }
     else
     {
-      // Turn off current light and move to next step
+      // Deactivate light
       digitalWrite(ledPins[i], LOW);
       lightIsOn = false;
-      currentStep++;
-      currentInterval = 10; // Short delay before turning on next light
+      currStep++;
+      currInterval = 10; // Brief pause between changes
 
       Serial.print("Turning OFF light at pin ");
       Serial.println(ledPins[i]);
@@ -201,51 +199,50 @@ void updateTrafficLights()
 }
 
 unsigned long lastReadTime = 0;
-const int READ_INTERVAL = 100; // 100ms between readings
+const int readInterval = 100; // 100ms sampling rate
 
 void checkDarkness()
 {
-  // Only take readings at specified intervals
+  // Throttle readings
   unsigned long currentTime = millis();
-  if (currentTime - lastReadTime >= READ_INTERVAL)
+  if (currentTime - lastReadTime >= readInterval)
   {
-    // Read darkness sensor
-    int darknessValue = analogRead(DARKNESS_SENSOR_PIN);
-    // Serial.print("Darkness: ");
+    // Get sensor reading
+    int darknessValue = analogRead(darknessSensorPin);
     Serial.println(darknessValue);
 
-    // Control output pin based on darkness value
-    if (darknessValue < DARKNESS_THRESHOLD)
+    // Control light based on reading
+    if (darknessValue < darknessThreshold)
     {
-      digitalWrite(OUTPUT_PIN, HIGH); // Turn on output when dark
+      digitalWrite(outputPin, HIGH); // Dark - light on
       Serial.print("Turning on the light on peak brightness");
     }
     else
     {
-      digitalWrite(OUTPUT_PIN, LOW); // Turn off output when light
+      digitalWrite(outputPin, LOW); // Bright - light off
     }
 
-    lastReadTime = currentTime; // Update the last read time
+    lastReadTime = currentTime;
   }
 }
 
 void updateSpeedDetection()
 {
-  // Read speed sensors
-  int speedSensor1Value = analogRead(SPEED_SENSOR_1_PIN);
-  int speedSensor2Value = analogRead(SPEED_SENSOR_2_PIN);
+  // Get sensor readings
+  int sensor1Value = analogRead(speedSensor1Pin);
+  int sensor2Value = analogRead(speedSensor2Pin);
 
   Serial.println("sensor 2 go brr");
-  Serial.println(speedSensor2Value);
+  Serial.println(sensor2Value);
   Serial.println("sensor 1 go brr");
-  Serial.println(speedSensor1Value);
+  Serial.println(sensor1Value);
 
-  // State machine for speed detection
+  // Speed detection state machine
   switch (speedDetector.state)
   {
   case WAITING_FOR_FIRST_SENSOR:
-    // Check if first sensor is triggered
-    if (speedSensor1Value > SPEED_SENSOR_THRESHOLD)
+    // First sensor check
+    if (sensor1Value > speedSensorThreshold)
     {
       speedDetector.startTime = millis();
       speedDetector.state = WAITING_FOR_SECOND_SENSOR;
@@ -254,21 +251,21 @@ void updateSpeedDetection()
     break;
 
   case WAITING_FOR_SECOND_SENSOR:
-    // Check if object missed the second sensor (timeout)
+    // Timeout check
     if (millis() - speedDetector.startTime > 5000)
-    { // 5 second timeout
+    { // 5s timeout
       Serial.println("Object missed second sensor or timeout occurred");
       speedDetector.state = WAITING_FOR_FIRST_SENSOR;
     }
-    // Check if second sensor is triggered
-    else if (speedSensor2Value > SPEED_SENSOR_THRESHOLD)
+    // Second sensor check
+    else if (sensor2Value > speedSensorThreshold)
     {
       unsigned long endTime = millis();
-      float timeDiff = (endTime - speedDetector.startTime) / 1000.0; // Convert to seconds
+      float timeDiff = (endTime - speedDetector.startTime) / 1000.0;
 
       if (timeDiff > 0)
       {
-        float speed = DISTANCE / timeDiff;
+        float speed = distance / timeDiff;
 
         Serial.print("Time: ");
         Serial.print(timeDiff, 4);
@@ -281,14 +278,14 @@ void updateSpeedDetection()
         Serial.println(" km/h)");
       }
 
-      // Set cooldown period
+      // Start cooldown
       speedDetector.cooldownEndTime = millis() + speedDetector.cooldownDuration;
       speedDetector.state = COOLDOWN;
     }
     break;
 
   case COOLDOWN:
-    // Wait for cooldown period to end
+    // Wait for cooldown
     if (millis() >= speedDetector.cooldownEndTime)
     {
       speedDetector.state = WAITING_FOR_FIRST_SENSOR;
@@ -302,47 +299,44 @@ void setup()
   Serial.begin(9600);
   Serial.println("Display Main Program Starting");
 
-  // Initialize the display
+  // Init display
   tft.begin();
-  tft.setRotation(3); // Landscape mode
+  tft.setRotation(3); // Landscape
   tft.fillScreen(BACKGROUND_COLOR);
  
-  // Set a default time
-  setTime(8, 50, 0, 16, 6, 2025); // 12:30:00, June 12, 2023
+  // Set default time
+  setTime(8, 50, 0, 16, 6, 2025);
 
-  // Display welcome message
+  // Welcome message
   tft.setTextSize(3);
   tft.setTextColor(TITLE_COLOR);
   tft.setCursor(20, 100);
   tft.println("Display System Ready");
 
-  // trafic light
+  // Setup traffic lights
   for (int i = 0; i < numPins; i++)
   {
     pinMode(ledPins[i], OUTPUT);
-    digitalWrite(ledPins[i], LOW); // Start with all lights off
+    digitalWrite(ledPins[i], LOW);
   }
 
-  // Initially set both red lights on
+  // Start with red lights
   digitalWrite(ledPins[0], HIGH); // red1
   digitalWrite(ledPins[3], HIGH); // red2
 
-  // Initialize timing variables
-  previousMillis = millis();
+  // Init timers
+  prevMillis = millis();
 
-  // speed
-  //    pinMode(DARKNESS_SENSOR_PIN, INPUT);
-  pinMode(SPEED_SENSOR_1_PIN, INPUT);
-  pinMode(SPEED_SENSOR_2_PIN, INPUT);
-  pinMode(OUTPUT_PIN, OUTPUT);
+  // Setup sensors
+  pinMode(speedSensor1Pin, INPUT);
+  pinMode(speedSensor2Pin, INPUT);
+  pinMode(outputPin, OUTPUT);
 
-  // Initialize speed detector state
+  // Config speed detector
   speedDetector.state = WAITING_FOR_FIRST_SENSOR;
-  speedDetector.cooldownDuration = 1000; // 1 second cooldown
+  speedDetector.cooldownDuration = 1000; // 1s cooldown
 
   Serial.println("ESP32 Speed detection system is running.");
-
-  // delay(2000);
 }
 
 void loop()
@@ -352,17 +346,17 @@ void loop()
   checkDarkness();
   updateSpeedDetection();
 
-  // Change display mode periodically
+  // Rotate display modes
   if (currentMillis - lastModeChange > modeChangeInterval)
   {
-    // Cycle through display modes
+    // Next display mode
     currentMode = (DisplayMode)((currentMode + 1) % 4);
     lastModeChange = currentMillis;
 
-    // Update display values for the new mode
+    // Update values
     updateDisplayValues();
 
-    // Display the current mode
+    // Update screen
     switch (currentMode)
     {
     case WEATHER_DISPLAY:
@@ -371,9 +365,9 @@ void loop()
 
     case TIME_DISPLAY:
     {
-      // Update the time
+      // Increment time
       int h = hour();
-      int m = minute() + 1; // Advance time by 1 minute each cycle
+      int m = minute() + 1;
       if (m >= 60)
       {
         m = 0;
@@ -396,8 +390,6 @@ void loop()
     Serial.print("Changed display mode to: ");
     Serial.println(currentMode);
   }
-
-  // delay(100);
 }
 
 // Additional helper functions can be added here
