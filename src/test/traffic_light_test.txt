@@ -1,0 +1,22 @@
+#include <Arduino.h>
+
+int ledPins[] = {19, 13, 14, 5, 26, 12};
+const int numPins = sizeof(ledPins) / sizeof(ledPins[0]);
+
+void setup()
+{
+  for (int i = 0; i < numPins; i++)
+  {
+    pinMode(ledPins[i], OUTPUT);
+  }
+}
+
+void loop()
+{
+  for (int i = 0; i < numPins; i++)
+  {
+    digitalWrite(ledPins[i], HIGH);
+    delay(1000);
+    digitalWrite(ledPins[i], LOW);
+  }
+}

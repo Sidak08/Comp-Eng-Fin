@@ -7,7 +7,7 @@
 #include "displayFunctions.h"
 
 // Global variables for storing data
-WeatherData currentWeather = {22.5, 65.0, "Sunny"};
+WeatherData currentWeather = {19.5, 35.0, "Sunny"};
 long long currentPopulation = 10000; // World population display value (reduced to fit in 32-bit unsigned long)
 float currentSpeed = 75.0;           // Default speed value
 
@@ -27,7 +27,7 @@ const unsigned long modeChangeInterval = 10000; // 10 seconds
 // trafic light
 
 // Pin definitions for traffic lights
-int ledPins[] = {19, 13, 14, 5, 26, 25};
+int ledPins[] = {19, 14, 13, 5, 26, 12};
 int waitTime[] = {
     2000,
     5000,
@@ -57,7 +57,7 @@ const int SPEED_SENSOR_2_PIN = 35;  // Second photoresistor for speed detection
 const float DISTANCE = 0.5; // Adjust this to the actual distance between your sensors
 
 // Thresholds - adjust based on your specific sensors and lighting conditions
-const int DARKNESS_THRESHOLD = 4000;     // ADC value threshold for "darkness"
+const int DARKNESS_THRESHOLD = 4050;     // ADC value threshold for "darkness"
 const int SPEED_SENSOR_THRESHOLD = 2000; // ADC value threshold for speed sensors
 
 // State variables for non-blocking operation
@@ -212,7 +212,7 @@ void checkDarkness()
     // Read darkness sensor
     int darknessValue = analogRead(DARKNESS_SENSOR_PIN);
     // Serial.print("Darkness: ");
-    // Serial.println(darknessValue);
+    Serial.println(darknessValue);
 
     // Control output pin based on darkness value
     if (darknessValue < DARKNESS_THRESHOLD)
@@ -304,11 +304,11 @@ void setup()
 
   // Initialize the display
   tft.begin();
-  tft.setRotation(1); // Landscape mode
+  tft.setRotation(3); // Landscape mode
   tft.fillScreen(BACKGROUND_COLOR);
-
+ 
   // Set a default time
-  setTime(12, 30, 0, 12, 6, 2023); // 12:30:00, June 12, 2023
+  setTime(8, 50, 0, 16, 6, 2025); // 12:30:00, June 12, 2023
 
   // Display welcome message
   tft.setTextSize(3);
